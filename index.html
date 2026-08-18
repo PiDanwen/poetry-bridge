@@ -218,8 +218,8 @@
       <line x1="1600" y1="590" x2="1300" y2="590" stroke="#1a1a1a" stroke-width="2.5"/>
     </g>
 
-    <!-- 衔接石台（JS 生成） -->
-    <g id="platformLayer"></g>
+    <!-- 衔接悬崖（JS 生成） -->
+    <g id="cliffLayer"></g>
 
     <!-- 诗声桥 -->
     <g id="bridgeLayer">
@@ -354,7 +354,7 @@ const charRoot = $('#charRoot');
 const charBody = $('#charBody');
 const charShadow = $('#charShadow');
 const bridgeSegs = $('#bridgeSegs');
-const platformLayer = $('#platformLayer');
+const cliffLayer = $('#cliffLayer');
 const fxLayer = $('#fx');
 
 /* ---------- 状态 ---------- */
@@ -382,10 +382,10 @@ const Y_TEMPLATE = [
   [634, 684, 714, 684, 634],
   [600, 574, 562, 574, 586],
 ];
-let platforms = [], cliffL = null, cliffR = null;
+let cliffs = [], cliffL = null, cliffR = null;
 
-/* 计算全部汉字节点坐标：每句一座桥，桥与桥之间由浮空石台衔接 */
-const PLAT_W = 72, PLAT_H = 14;
+/* 计算全部汉字节点坐标：每句一座桥，桥与桥之间由衔接悬崖承接 */
+const CLIFF_W = 84;
 function layoutBridge(){
   const X0 = 320, GAP = 45, BETWEEN = 80;
   let cx = X0;
@@ -402,13 +402,13 @@ function layoutBridge(){
   // 全部节点
   nodePts = [];
   bridges.forEach(b=>{ for(let k=0;k<b.xs.length;k++) nodePts.push({x:b.xs[k], y:b.ys[k]}); });
-  // 衔接石台：顶面 = 相邻桥端高度均值（自然过渡，视觉上"嵌"在桥与桥之间）
-  platforms = [];
+  // 衔接悬崖：崖顶 = 相邻桥端高度较高者（自然过渡，视觉上像一座座独立孤峰）
+  cliffs = [];
   for(let j=0;j<bridges.length-1;j++){
     const a = bridges[j], b = bridges[j+1];
     const ax = a.xs[a.xs.length-1], ay = a.ys[a.ys.length-1];
     const bx = b.xs[0], by = b.ys[0];
-    platforms.push({ x:(ax+bx)/2, ty: Math.max(ay, by) + 16 });
+    cliffs.push({ x:(ax+bx)/2, top: Math.max(ay, by) + 2 });
   }
   // 左右悬崖（顶面对齐 SVG 悬崖 y=590）
   cliffL = { right: X0 - 23, top: 590 };
@@ -433,8 +433,8 @@ function drawBridges(){
   bridgeSegs.innerHTML = '';
   bridges.forEach((b, j)=>{
     const n = b.text.length;
-    const sx = b.xs[0]-20, sy = j===0 ? cliffL.top : platforms[j-1].ty - PLAT_H;
-    const ex = b.xs[n-1]+20, ey = j===bridges.length-1 ? cliffR.top : platforms[j].ty - PLAT_H;
+    const sx = b.xs[0]-20, sy = j===0 ? cliffL.top : cliffs[j-1].top;
+    const ex = b.xs[n-1]+20, ey = j===bridges.length-1 ? cliffR.top : cliffs[j].top;
     const pts = [{x:sx,y:sy}];
     for(let k=0;k<n;k++) pts.push({x:b.xs[k], y:b.ys[k]});
     pts.push({x:ex,y:ey});
@@ -452,44 +452,64 @@ function drawBridges(){
   });
 }
 
-/* 绘制衔接石台（极简扁平落脚面） */
-function buildPlatforms(){
-  platformLayer.innerHTML = '';
-  platforms.forEach((p, i)=>{
+/* 绘制衔接悬崖（极简柱形崖壁，与左右悬崖同风格，直落画面底部） */
+function buildCliffs(){
+  cliffLayer.innerHTML = '';
+  cliffs.forEach((c, i)=>{
     const g = mk('g');
-    g.setAttribute('class','platform');
-    g.setAttribute('id','platform-'+i);
-    // 投影
-    const shadow = mk('ellipse');
-    shadow.setAttribute('cx', p.x);
-    shadow.setAttribute('cy', p.ty + 5);
-    shadow.setAttribute('rx', PLAT_W/2 + 6);
-    shadow.setAttribute('ry', 4);
-    shadow.setAttribute('fill', 'rgba(0,0,0,.08)');
-    g.appendChild(shadow);
-    // 顶面（扁平立方体）
-    const top = mk('rect');
-    top.setAttribute('x', p.x - PLAT_W/2);
-    top.setAttribute('y', p.ty - PLAT_H);
-    top.setAttribute('width', PLAT_W);
-    top.setAttribute('height', PLAT_H);
-    top.setAttribute('rx', 3);
-    top.setAttribute('fill', '#ffffff');
-    top.setAttribute('stroke', '#1a1a1a');
-    top.setAttribute('stroke-width', 2.5);
-    g.appendChild(top);
-    // 编号（位于石台下方）
+    g.setAttribute('class','cliff');
+    g.setAttribute('id','cliff-'+i);
+    const w = CLIFF_W, x0 = c.x - w/2, x1 = c.x + w/2;
+    // 崖壁：从崖顶直落画面底部
+    const wall = mk('path');
+    wall.setAttribute('d', `M ${x0} ${c.top} L ${x0} 900 L ${x1} 900 L ${x1} ${c.top} Z`);
+    wall.setAttribute('fill','#ececea');
+    wall.setAttribute('stroke','#1a1a1a');
+    wall.setAttribute('stroke-width',2);
+    g.appendChild(wall);
+    // 崖顶线（加粗强调顶面）
+    const topLine = mk('line');
+    topLine.setAttribute('x1', x0); topLine.setAttribute('y1', c.top);
+    topLine.setAttribute('x2', x1); topLine.setAttribute('y2', c.top);
+    topLine.setAttribute('stroke','#1a1a1a');
+    topLine.setAttribute('stroke-width',2.5);
+    g.appendChild(topLine);
+    // 崖壁细纹理（极简两条竖线）
+    const tex1 = mk('line');
+    tex1.setAttribute('x1', x0+16); tex1.setAttribute('y1', c.top+4);
+    tex1.setAttribute('x2', x0+16); tex1.setAttribute('y2', 900);
+    tex1.setAttribute('stroke','#d6d6d3'); tex1.setAttribute('stroke-width',1);
+    g.appendChild(tex1);
+    const tex2 = mk('line');
+    tex2.setAttribute('x1', x1-16); tex2.setAttribute('y1', c.top+4);
+    tex2.setAttribute('x2', x1-16); tex2.setAttribute('y2', 900);
+    tex2.setAttribute('stroke','#d6d6d3'); tex2.setAttribute('stroke-width',1);
+    g.appendChild(tex2);
+    // 段号（刻在崖壁上，深色确保可读）
     const label = mk('text');
-    label.setAttribute('x', p.x);
-    label.setAttribute('y', p.ty + 16);
+    label.setAttribute('x', c.x);
+    label.setAttribute('y', Math.min(c.top + 40, 878));
     label.setAttribute('text-anchor','middle');
     label.setAttribute('dominant-baseline','central');
     label.setAttribute('font-size', 11);
-    label.setAttribute('fill', '#aaa');
+    label.setAttribute('fill', '#1a1a1a');
     label.style.fontFamily = 'var(--ui)';
     label.textContent = '第 ' + (i+1) + ' 段';
     g.appendChild(label);
-    platformLayer.appendChild(g);
+    // 段号阴影（浅色描边，增强可读性）
+    const labelShadow = mk('text');
+    labelShadow.setAttribute('x', c.x);
+    labelShadow.setAttribute('y', Math.min(c.top + 40, 878));
+    labelShadow.setAttribute('text-anchor','middle');
+    labelShadow.setAttribute('dominant-baseline','central');
+    labelShadow.setAttribute('font-size', 11);
+    labelShadow.setAttribute('fill', 'none');
+    labelShadow.setAttribute('stroke', '#ececea');
+    labelShadow.setAttribute('stroke-width', 5);
+    labelShadow.style.fontFamily = 'var(--ui)';
+    labelShadow.textContent = '第 ' + (i+1) + ' 段';
+    g.appendChild(labelShadow);
+    cliffLayer.appendChild(g);
   });
 }
 
@@ -516,7 +536,7 @@ function buildLevel(){
     }
   });
   layoutBridge();
-  buildPlatforms();
+  buildCliffs();
   drawBridges();
 
   // 节点（极简立方体）
@@ -821,7 +841,7 @@ function registerSyllable(){
   if(state.litInBridge >= len) bridgeComplete();
 }
 
-/* 一座桥读完：点亮本桥 → 得星 → 火柴人从桥头走到桥尾石台 → 下一座桥 */
+/* 一座桥读完：点亮本桥 → 得星 → 火柴人从桥头走到桥尾悬崖 → 下一座桥 */
 async function bridgeComplete(){
   if(state.done || state.walking) return;
   stopListening();
@@ -836,20 +856,20 @@ async function bridgeComplete(){
   updateStarRow(state.levelStars-1);
   spawnFloat('桥通啦！ +1 星', '56%', '28%');
 
-  // 先走到桥头（起点悬崖或上一座桥尾石台）
+  // 先走到桥头（起点悬崖或上一座衔接悬崖）
   const CLIFF_TOP = 590;
   const startPt = state.bridge===0
     ? {x:210, y:CLIFF_TOP-12}
-    : {x:platforms[state.bridge-1].x, y:platforms[state.bridge-1].ty - PLAT_H - 12};
-  const startGY = state.bridge===0 ? CLIFF_TOP : platforms[state.bridge-1].ty - PLAT_H;
+    : {x:cliffs[state.bridge-1].x, y:cliffs[state.bridge-1].top - 12};
+  const startGY = state.bridge===0 ? CLIFF_TOP : cliffs[state.bridge-1].top;
   if(Math.hypot(startPt.x-state.charPos.x, startPt.y-state.charPos.y) > 2) await hopTo(startPt, 420, startGY);
   // 逐字走过本桥（站在节点顶部）
   for(let k=0;k<len;k++) await hopTo({x:b.xs[k], y:b.ys[k]-34}, 430, b.ys[k]-22);
-  // 走到桥尾：衔接石台或终点悬崖
+  // 走到桥尾：衔接悬崖或终点悬崖
   const endPt = state.bridge===bridges.length-1
     ? {x:cliffR.left+34, y:CLIFF_TOP-12}
-    : {x:platforms[state.bridge].x, y:platforms[state.bridge].ty - PLAT_H - 12};
-  const endGY = state.bridge===bridges.length-1 ? CLIFF_TOP : platforms[state.bridge].ty - PLAT_H;
+    : {x:cliffs[state.bridge].x, y:cliffs[state.bridge].top - 12};
+  const endGY = state.bridge===bridges.length-1 ? CLIFF_TOP : cliffs[state.bridge].top;
   await hopTo(endPt, 430, endGY);
 
   state.bridge++;
