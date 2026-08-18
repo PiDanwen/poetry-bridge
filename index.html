@@ -206,7 +206,7 @@
     </g>
 
     <!-- 地面线 -->
-    <line x1="0" y1="640" x2="1600" y2="640" stroke="#c8c8c6" stroke-width="1"/>
+    <line x1="0" y1="730" x2="1600" y2="730" stroke="#c8c8c6" stroke-width="1"/>
 
     <!-- 左右悬崖（极简几何） -->
     <g>
@@ -229,7 +229,7 @@
 
     <!-- 火柴人 -->
     <g id="charLayer">
-      <ellipse id="charShadow" cx="250" cy="596" rx="22" ry="4" fill="rgba(0,0,0,.12)"/>
+      <ellipse id="charShadow" cx="210" cy="595" rx="22" ry="4" fill="rgba(0,0,0,.12)"/>
       <g id="charRoot">
         <g id="charBody">
           <!-- 头 -->
@@ -365,7 +365,7 @@ const state = {
   syllableMode:false, demoMode:false, recog:null,
   actx:null, master:null, analyser:null, stream:null,
   lastPeak:0, sens:45, sfxOn:true,
-  charPos:{x:210,y:612},
+  charPos:{x:210,y:578},
 };
 try{ state.best = parseInt(localStorage.getItem('sycsb_best')||'0')||0; }catch(e){}
 
@@ -384,9 +384,10 @@ const Y_TEMPLATE = [
 ];
 let platforms = [], cliffL = null, cliffR = null;
 
-/* 计算全部汉字节点坐标：每半句一座桥，桥与桥之间由浮空石台衔接 */
+/* 计算全部汉字节点坐标：每句一座桥，桥与桥之间由浮空石台衔接 */
+const PLAT_W = 72, PLAT_H = 14;
 function layoutBridge(){
-  const X0 = 340, GAP = 45, BETWEEN = 68;
+  const X0 = 320, GAP = 45, BETWEEN = 80;
   let cx = X0;
   bridges.forEach((b, j)=>{
     const n = b.text.length;
@@ -401,18 +402,18 @@ function layoutBridge(){
   // 全部节点
   nodePts = [];
   bridges.forEach(b=>{ for(let k=0;k<b.xs.length;k++) nodePts.push({x:b.xs[k], y:b.ys[k]}); });
-  // 衔接石台：中心 = 相邻桥端中点，顶面 = 桥端高度均值 + 14
+  // 衔接石台：顶面 = 相邻桥端高度均值（自然过渡，视觉上"嵌"在桥与桥之间）
   platforms = [];
   for(let j=0;j<bridges.length-1;j++){
     const a = bridges[j], b = bridges[j+1];
     const ax = a.xs[a.xs.length-1], ay = a.ys[a.ys.length-1];
     const bx = b.xs[0], by = b.ys[0];
-    platforms.push({ x:(ax+bx)/2, ty:(ay+by)/2 + 14 });
+    platforms.push({ x:(ax+bx)/2, ty: Math.max(ay, by) + 16 });
   }
-  // 左右悬崖
-  cliffL = { right: X0 - 23, top: bridges[0].ys[0] + 14 };
+  // 左右悬崖（顶面对齐 SVG 悬崖 y=590）
+  cliffL = { right: X0 - 23, top: 590 };
   const last = bridges[bridges.length-1];
-  cliffR = { left: last.xs[last.xs.length-1] + 23, top: last.ys[last.ys.length-1] + 14 };
+  cliffR = { left: last.xs[last.xs.length-1] + 23, top: 590 };
 }
 
 function smoothPath(pts){
@@ -432,8 +433,8 @@ function drawBridges(){
   bridgeSegs.innerHTML = '';
   bridges.forEach((b, j)=>{
     const n = b.text.length;
-    const sx = b.xs[0]-20, sy = j===0 ? cliffL.top : platforms[j-1].ty;
-    const ex = b.xs[n-1]+20, ey = j===bridges.length-1 ? cliffR.top : platforms[j].ty;
+    const sx = b.xs[0]-20, sy = j===0 ? cliffL.top : platforms[j-1].ty - PLAT_H;
+    const ex = b.xs[n-1]+20, ey = j===bridges.length-1 ? cliffR.top : platforms[j].ty - PLAT_H;
     const pts = [{x:sx,y:sy}];
     for(let k=0;k<n;k++) pts.push({x:b.xs[k], y:b.ys[k]});
     pts.push({x:ex,y:ey});
@@ -451,22 +452,43 @@ function drawBridges(){
   });
 }
 
-/* 绘制衔接石台（极简立方体） */
+/* 绘制衔接石台（极简扁平落脚面） */
 function buildPlatforms(){
   platformLayer.innerHTML = '';
-  platforms.forEach((p)=>{
+  platforms.forEach((p, i)=>{
     const g = mk('g');
-    const w = 50, h = 26;
-    // 顶面
+    g.setAttribute('class','platform');
+    g.setAttribute('id','platform-'+i);
+    // 投影
+    const shadow = mk('ellipse');
+    shadow.setAttribute('cx', p.x);
+    shadow.setAttribute('cy', p.ty + 5);
+    shadow.setAttribute('rx', PLAT_W/2 + 6);
+    shadow.setAttribute('ry', 4);
+    shadow.setAttribute('fill', 'rgba(0,0,0,.08)');
+    g.appendChild(shadow);
+    // 顶面（扁平立方体）
     const top = mk('rect');
-    top.setAttribute('x', p.x - w/2);
-    top.setAttribute('y', p.ty - h);
-    top.setAttribute('width', w);
-    top.setAttribute('height', h);
-    top.setAttribute('fill', '#ececea');
+    top.setAttribute('x', p.x - PLAT_W/2);
+    top.setAttribute('y', p.ty - PLAT_H);
+    top.setAttribute('width', PLAT_W);
+    top.setAttribute('height', PLAT_H);
+    top.setAttribute('rx', 3);
+    top.setAttribute('fill', '#ffffff');
     top.setAttribute('stroke', '#1a1a1a');
-    top.setAttribute('stroke-width', '2');
+    top.setAttribute('stroke-width', 2.5);
     g.appendChild(top);
+    // 编号（位于石台下方）
+    const label = mk('text');
+    label.setAttribute('x', p.x);
+    label.setAttribute('y', p.ty + 16);
+    label.setAttribute('text-anchor','middle');
+    label.setAttribute('dominant-baseline','central');
+    label.setAttribute('font-size', 11);
+    label.setAttribute('fill', '#aaa');
+    label.style.fontFamily = 'var(--ui)';
+    label.textContent = '第 ' + (i+1) + ' 段';
+    g.appendChild(label);
     platformLayer.appendChild(g);
   });
 }
@@ -523,9 +545,9 @@ function buildLevel(){
   $('#levelChip').textContent = '第 '+(state.level+1)+' 关';
   buildStarRow();
   renderBridgePanel(0);
-  // 小人归位到起点悬崖
-  state.charPos = {x:210,y:612};
-  setChar(210,612,0,1,612);
+  // 小人归位到起点悬崖顶部
+  state.charPos = {x:210,y:578};
+  setChar(210,578,0,1,590);
 }
 
 /* ---------- 面板 UI（古诗名 + 当前半句大字） ---------- */
@@ -584,21 +606,24 @@ function setChar(x, y, rot, scale, groundY){
   charShadow.setAttribute('cx', x);
   charShadow.setAttribute('cy', (groundY==null?y:groundY)+5);
 }
-function hopTo(p, dur=500){
+function hopTo(p, dur=500, groundY){
   return new Promise(res=>{
     const from = {...state.charPos};
     const dx = p.x-from.x, dy = p.y-from.y;
+    const gy0 = groundY==null ? from.y : groundY;
+    const gy1 = groundY==null ? p.y : groundY;
     const t0 = performance.now();
     (function step(t){
       const k = Math.min(1,(t-t0)/dur);
       const e = k<0.5 ? 2*k*k : 1-Math.pow(-2*k+2,2)/2;
       const gx = from.x+dx*e, gy = from.y+dy*e;
+      const gY = gy0 + (gy1-gy0)*e;
       const arc = Math.sin(Math.PI*k)*36;
       const rot = Math.sin(Math.PI*k)*11*Math.sign(dx||1);
       const sc = 1 - Math.sin(Math.PI*k)*0.08;
-      setChar(gx, gy-arc, rot, sc, gy);
+      setChar(gx, gy-arc, rot, sc, gY);
       if(k<1) requestAnimationFrame(step);
-      else { state.charPos = {x:p.x,y:p.y}; setChar(p.x,p.y,0,1,p.y); res(); }
+      else { state.charPos = {x:p.x,y:p.y}; setChar(p.x,p.y,0,1,gy1); res(); }
     })(t0);
   });
 }
@@ -812,17 +837,20 @@ async function bridgeComplete(){
   spawnFloat('桥通啦！ +1 星', '56%', '28%');
 
   // 先走到桥头（起点悬崖或上一座桥尾石台）
+  const CLIFF_TOP = 590;
   const startPt = state.bridge===0
-    ? {x:210, y:612}
-    : {x:platforms[state.bridge-1].x, y:platforms[state.bridge-1].ty - 2};
-  if(Math.hypot(startPt.x-state.charPos.x, startPt.y-state.charPos.y) > 2) await hopTo(startPt, 420);
-  // 逐字走过本桥
-  for(let k=0;k<len;k++) await hopTo({x:b.xs[k], y:b.ys[k]+24}, 430);
+    ? {x:210, y:CLIFF_TOP-12}
+    : {x:platforms[state.bridge-1].x, y:platforms[state.bridge-1].ty - PLAT_H - 12};
+  const startGY = state.bridge===0 ? CLIFF_TOP : platforms[state.bridge-1].ty - PLAT_H;
+  if(Math.hypot(startPt.x-state.charPos.x, startPt.y-state.charPos.y) > 2) await hopTo(startPt, 420, startGY);
+  // 逐字走过本桥（站在节点顶部）
+  for(let k=0;k<len;k++) await hopTo({x:b.xs[k], y:b.ys[k]-34}, 430, b.ys[k]-22);
   // 走到桥尾：衔接石台或终点悬崖
   const endPt = state.bridge===bridges.length-1
-    ? {x:cliffR.left+34, y:cliffR.top-2}
-    : {x:platforms[state.bridge].x, y:platforms[state.bridge].ty - 2};
-  await hopTo(endPt, 430);
+    ? {x:cliffR.left+34, y:CLIFF_TOP-12}
+    : {x:platforms[state.bridge].x, y:platforms[state.bridge].ty - PLAT_H - 12};
+  const endGY = state.bridge===bridges.length-1 ? CLIFF_TOP : platforms[state.bridge].ty - PLAT_H;
+  await hopTo(endPt, 430, endGY);
 
   state.bridge++;
   state.litInBridge = 0;
@@ -893,7 +921,7 @@ function loop(){
   if(!state.walking){
     const t = performance.now();
     const bob = Math.sin(t/380)*3;
-    setChar(state.charPos.x, state.charPos.y + bob, 0, 1 + Math.sin(t/520)*0.015, state.charPos.y);
+    setChar(state.charPos.x, state.charPos.y + bob, 0, 1 + Math.sin(t/520)*0.015, state.charPos.y + 12);
   }
   // 音量检测
   if(state.micActive && state.analyser){
