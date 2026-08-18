@@ -175,6 +175,11 @@
   }
   .o-btn:hover{transform:translateY(-2px);}
   .o-btn:active{transform:scale(.97);}
+  /* 结算弹窗双按钮 */
+  .o-actions{display:flex;gap:16px;justify-content:center;margin-top:30px;flex-wrap:wrap;}
+  .o-actions .o-btn{margin-top:0;}
+  .o-btn.ghost{background:#fff;color:var(--ink);border:1.5px solid var(--ink);padding:11px 30px;letter-spacing:4px;}
+  .o-btn.ghost:hover{background:var(--ink);color:#fff;}
   .o-result{margin-top:8px;font-size:19px;color:var(--ink);letter-spacing:3px;font-family:var(--kai);}
   .o-note{margin-top:18px;font-size:12px;color:var(--ink-light);letter-spacing:1px;}
   .o-paper{font-family:var(--kai);font-size:16px;color:var(--ink-soft);letter-spacing:2px;margin-top:14px;max-width:760px;}
@@ -336,7 +341,10 @@
       <div class="o-stars-big" id="doneStarRow"></div>
       <div class="o-result">本关点亮 <span class="o-count-roll" id="doneCount">0</span> / <span id="doneCountMax">4</span> 颗星</div>
       <div class="o-note" id="doneTotal">累计星星 0 / 20</div>
-      <button class="o-btn" id="nextBtn">下一关</button>
+      <div class="o-actions">
+        <button class="o-btn ghost" id="quitBtn">退出游戏</button>
+        <button class="o-btn" id="restartBtn">重新开始</button>
+      </div>
     </div>
   </div>
 
@@ -918,7 +926,6 @@ async function finishLevel(){
   $('#doneCount').textContent = '0';
   $('#doneCountMax').textContent = n;
   $('#doneTotal').textContent = '累计星星 '+state.stars+' / '+TOTAL_STARS;
-  $('#nextBtn').textContent = state.level < LEVELS.length-1 ? '下一关' : '再玩一次';
 
   // 星星行：先全部灰显
   const row = $('#doneStarRow');
@@ -1058,18 +1065,26 @@ $('#startBtn').addEventListener('click', ()=>{
   buildLevel();
   startListening();
 });
-$('#nextBtn').addEventListener('click', ()=>{
+$('#restartBtn').addEventListener('click', ()=>{
+  // 重新开始本关：扣回本关已得星星（防重复刷星），从本关第一座桥重玩
   $('#doneOverlay').classList.add('hide');
-  if(state.level >= LEVELS.length-1){
-    state.level = 0;
-    state.stars = 0;
-  }else{
-    state.level++;
-  }
+  state.stars = Math.max(0, state.stars - state.levelStars);
   state.levelStars = 0;
   state.done = false;
   buildLevel();
   startListening();
+});
+$('#quitBtn').addEventListener('click', ()=>{
+  // 退出游戏：停止朗读、关闭结算弹窗、返回开始界面并重置进度
+  stopListening();
+  state.level = 0;
+  state.stars = 0;
+  state.levelStars = 0;
+  state.bridge = 0;
+  state.litInBridge = 0;
+  state.done = false;
+  $('#doneOverlay').classList.add('hide');
+  $('#startOverlay').classList.remove('hide');
 });
 $('#micBtn').addEventListener('click', toggleMic);
 $('#sensSlider').addEventListener('input', e=>{
