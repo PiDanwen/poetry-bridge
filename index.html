@@ -339,8 +339,7 @@
       <div class="o-title" id="doneTitle">闯关成功</div>
       <div class="o-paper" id="donePaper">四座诗桥尽数点亮</div>
       <div class="o-stars-big" id="doneStarRow"></div>
-      <div class="o-result">本关点亮 <span class="o-count-roll" id="doneCount">0</span> / <span id="doneCountMax">4</span> 颗星</div>
-      <div class="o-note" id="doneTotal">累计星星 0 / 20</div>
+      <div class="o-result">本关点亮 <span class="o-count-roll" id="doneCount">0</span> 颗星</div>
       <div class="o-actions">
         <button class="o-btn ghost" id="quitBtn">退出游戏</button>
         <button class="o-btn" id="restartBtn">重新开始</button>
@@ -924,8 +923,6 @@ async function finishLevel(){
   $('#doneTitle').textContent = '闯关成功';
   $('#donePaper').textContent = '「'+lv.title+'」'+n+' 座诗桥尽数点亮';
   $('#doneCount').textContent = '0';
-  $('#doneCountMax').textContent = n;
-  $('#doneTotal').textContent = '累计星星 '+state.stars+' / '+TOTAL_STARS;
 
   // 星星行：先全部灰显
   const row = $('#doneStarRow');
